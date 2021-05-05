@@ -1,0 +1,6 @@
+.venv
+data/
+lightning_logs/
+process/
+save
+*.wav
