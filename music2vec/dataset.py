@@ -23,10 +23,12 @@ GENRES = [
 TRACKS = ['bass', 'drums', 'other', 'vocals']
 
 
-def read_wav(filename, offset=0, duration=None):
+def read_wav_and_random_crop(filename, duration=None):
 
     _, data = wavfile.read(filename)
     data = data[::2]
+
+    offset = random.randint(0, len(data)-duration)
 
     if duration:
         return data[offset:offset+duration, 0] / 32768
@@ -91,8 +93,7 @@ class Remixer(Dataset):
 
         for i, track in enumerate(TRACKS):
             filename = compose_set[track]
-            start = random.randint(0, 22050*30-self.sample_length)
-            wav = read_wav(filename, start, self.sample_length)
+            wav = read_wav_and_random_crop(filename, self.sample_length)
             wavs[i,:] = th.tensor(wav)
 
         return wavs
