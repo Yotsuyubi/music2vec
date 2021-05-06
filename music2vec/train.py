@@ -47,7 +47,7 @@ class MyCallback(Callback):
             #     os.path.join(self.path, self.epoch_saved_model_path)
             # )
             th.save(
-                trainer.model.state_dict(), 
+                trainer.model.model.state_dict(), 
                 self.path
             )
 

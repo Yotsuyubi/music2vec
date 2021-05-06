@@ -6,9 +6,9 @@ name = "pypi"
 [packages]
 torch = "*"
 demucs = "*"
-librosa = "*"
 progressbar2 = "*"
 pytorch-lightning = "*"
+scipy = "*"
 
 [dev-packages]
 pylint = "*"
