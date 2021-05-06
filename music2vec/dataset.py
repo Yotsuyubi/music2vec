@@ -5,6 +5,7 @@ import os
 import random
 import torchaudio
 from .argument import RandomCrop
+from scipy.io import wavfile
 
 
 GENRES = [
@@ -20,6 +21,17 @@ GENRES = [
     'rock'
 ]
 TRACKS = ['bass', 'drums', 'other', 'vocals']
+
+
+def read_wav(filename, offset=0, duration=None):
+
+    _, data = wavfile.read(filename)
+    data = data[::2]
+
+    if duration:
+        return data[offset:offset+duration, 0] / 32768
+    else:
+        return data[offset:, 0] / 32768
 
 
 def get_subset(path):
@@ -79,10 +91,9 @@ class Remixer(Dataset):
 
         for i, track in enumerate(TRACKS):
             filename = compose_set[track]
-            wav = torchaudio.load(filename)[0][0]
-            wav = torchaudio.transforms.Resample(44100, 22050)(wav)
-            trimed = RandomCrop(self.sample_length)(wav)
-            wavs[i,:] = trimed
+            start = random.randint(0, 22050*30-self.sample_length)
+            wav = read_wav(filename, start, self.sample_length)
+            wavs[i,:] = th.tensor(wav)
 
         return wavs
 
