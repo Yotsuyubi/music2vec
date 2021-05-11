@@ -4,8 +4,9 @@ import glob
 import os
 import random
 import torchaudio
-from .argument import RandomCrop
+from .argument import TimeStreach, PitchShift, Mask
 from scipy.io import wavfile
+import numpy as np
 
 
 GENRES = [
@@ -25,15 +26,15 @@ TRACKS = ['bass', 'drums', 'other', 'vocals']
 
 def read_wav_and_random_crop(filename, duration=None):
 
-    _, data = wavfile.read(filename)
-    data = data[::2]
+    info = torchaudio.info(filename)
+    sample_length = info.num_frames
+    offset = random.randint(0, sample_length-duration*2)
+    data, _ = torchaudio.load(
+        filename, frame_offset=offset,
+        num_frames=duration*2 if duration else -1
+    )
 
-    offset = random.randint(0, len(data)-duration)
-
-    if duration:
-        return data[offset:offset+duration, 0] / 32768
-    else:
-        return data[offset:, 0] / 32768
+    return data.detach().numpy()[0,::2]
 
 
 def get_subset(path):
@@ -89,20 +90,30 @@ class Remixer(Dataset):
 
     def load_set(self, compose_set):
 
-        wavs = th.zeros(4, self.sample_length)
+        wavs = np.zeros((4, self.sample_length))
 
         for i, track in enumerate(TRACKS):
             filename = compose_set[track]
             wav = read_wav_and_random_crop(filename, self.sample_length)
-            wavs[i,:] = th.tensor(wav)
+            if np.random.uniform() < 0.5: 
+                wav = TimeStreach()(wav)
+            if np.random.uniform() < 0.5: 
+                wav = PitchShift()(wav)
+            if np.random.uniform() < 0.5: 
+                wav = Mask()(wav)
+            wavs[i,:] = wav
 
-        return wavs
+        return th.tensor(wavs)
+
 
     def random_mixer(self, wavs):
 
         mixed = th.zeros(1, self.sample_length)
 
-        volumes = th.softmax(th.rand(4), dim=0)
+        volumes = th.rand(4)
+        if random.random() < 0.5:
+            index = random.randint(0, 3)
+            volumes[index] = 0.0
 
         for i, volume in enumerate(volumes):
             volume_randamized = wavs[i,:] * volume
@@ -124,8 +135,9 @@ class Remixer(Dataset):
         return mix, GENRES.index(genre)
 
 
+
 if __name__ == '__main__':
-    dataset = Remixer('process/train')
+    dataset = Remixer('process/train', sample_length=22050*3)
     mix, genre = dataset.__getitem__(None)
     torchaudio.save('test.wav', mix, sample_rate=22050)
     print(mix, genre)

@@ -45,6 +45,7 @@ class Music2Vec(nn.Module):
 
         self.feature_extructor = nn.ModuleList()
         self.fc = nn.Sequential(
+            nn.Dropout(0.5),
             nn.Linear(self.feature_size, self.output_size)
         )
 
@@ -59,7 +60,8 @@ class Music2Vec(nn.Module):
             encode = [
                 nn.Conv1d(in_channel, conv_channel, self.kernel_size, self.stride),
                 nn.BatchNorm1d(conv_channel),
-                nn.ReLU()
+                nn.ReLU(),
+                nn.Dropout(0.5)
             ]
 
             self.feature_extructor.append(

@@ -93,7 +93,9 @@ class Trainer(pl.LightningModule):
         x, y = train_batch
         y_hat = self(x)
         loss = th.nn.CrossEntropyLoss()(y_hat, y)
-        self.log('train_loss', loss)
+        acc = accuracy(y_hat, y)
+        self.log('train_loss', loss, prog_bar=True, on_epoch=True, on_step=False)
+        self.log('train_acc', acc, prog_bar=True, on_epoch=True, on_step=False)
         return loss
 
 
@@ -101,8 +103,10 @@ class Trainer(pl.LightningModule):
 
         x, y = val_batch
         y_hat = self(x)
+        loss = th.nn.CrossEntropyLoss()(y_hat, y)
         acc = accuracy(y_hat, y)
-        self.log('val_acc', acc)
+        self.log('val_loss', loss, prog_bar=True, on_epoch=True)
+        self.log('val_acc', acc, prog_bar=True, on_epoch=True)
 
 
 if __name__ == '__main__':
@@ -149,12 +153,12 @@ if __name__ == '__main__':
         lr=args.learning_rate
     )
     train_loader = DataLoader(
-        Remixer(os.path.join(args.processed_root, 'train')), 
+        Remixer(os.path.join(args.processed_root, 'train'), sample_length=22050), 
         batch_size=args.batch_size,
         num_workers=4
     )
     valid_loader = DataLoader(
-        Remixer(os.path.join(args.processed_root, 'valid')), 
+        Remixer(os.path.join(args.processed_root, 'valid'), sample_length=22050), 
         batch_size=args.batch_size,
         num_workers=4
     )

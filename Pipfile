@@ -9,6 +9,7 @@ demucs = "*"
 progressbar2 = "*"
 pytorch-lightning = "*"
 scipy = "*"
+librosa = "*"
 
 [dev-packages]
 pylint = "*"

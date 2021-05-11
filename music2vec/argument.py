@@ -1,5 +1,74 @@
 import torch as th
 import numpy as np
+import librosa
+
+
+class TimeStreach(object):
+
+    def __init__(
+        self,
+        rate_width=1 # 0.5 ~ 1.5
+    ):
+
+        self.rate_width = rate_width
+        self.rate = np.random.uniform(1-self.rate_width/2, 1+self.rate_width/2)
+
+    def __call__(self, data):
+
+        sample_length = data.shape[-1]
+
+        processed_data = librosa.effects.time_stretch(data, self.rate)
+        if self.rate > 1:
+            processed_data = np.pad(
+                processed_data, 
+                (0, sample_length - processed_data.shape[-1]), 
+                'wrap'
+            )
+        else:
+            processed_data = processed_data[:sample_length]
+        
+        return processed_data
+
+
+class PitchShift(object):
+
+    def __init__(
+        self,
+        step_width=6 # -3 ~ 3
+    ):
+
+        self.step_width = step_width
+        self.step = int(np.random.uniform(-self.step_width/2, self.step_width/2))
+
+
+    def __call__(self, data):
+
+        processed_data = librosa.effects.pitch_shift(data, sr=22050, n_steps=self.step)
+        
+        return processed_data
+
+
+class Mask(object):
+
+    def __init__(
+        self,
+        mask_rate=0.3
+    ):
+
+        self.mask_rate = mask_rate
+
+
+    def __call__(self, data):
+        
+        sample_length = data.shape[-1]
+        mask_length = int(sample_length*self.mask_rate)
+        mask_start = np.random.randint(
+            0, sample_length-mask_length
+        )
+        
+        data[mask_start:mask_start+mask_length] = np.zeros(mask_length)
+
+        return data
 
 
 class Crop(object):
