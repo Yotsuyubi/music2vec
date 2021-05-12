@@ -146,21 +146,32 @@ if __name__ == '__main__':
         type=int, help='number of gpu use. to train using cpu, this must be 0. default is 0.', 
         default=0
     )
+    parser.add_argument(
+        '-d', '--depth', 
+        type=int, help='number of network layers. default is 4.', 
+        default=4
+    )
+    parser.add_argument(
+        '-s', '--sample_length', 
+        type=int, help='length of samples. default is 22050.', 
+        default=22050
+    )
 
     args = parser.parse_args()
 
     train_model = Trainer(
-        lr=args.learning_rate
+        lr=args.learning_rate,
+        depth=args.depth
     )
     train_loader = DataLoader(
-        Remixer(os.path.join(args.processed_root, 'train'), sample_length=22050), 
+        Remixer(os.path.join(args.processed_root, 'train'), sample_length=args.sample_length), 
         batch_size=args.batch_size,
-        num_workers=4
+        num_workers=2
     )
     valid_loader = DataLoader(
-        Remixer(os.path.join(args.processed_root, 'valid'), sample_length=22050), 
+        Remixer(os.path.join(args.processed_root, 'valid'), sample_length=args.sample_length), 
         batch_size=args.batch_size,
-        num_workers=4
+        num_workers=2
     )
 
     trainer = pl.Trainer(

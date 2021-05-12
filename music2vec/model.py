@@ -45,7 +45,7 @@ class Music2Vec(nn.Module):
 
         self.feature_extructor = nn.ModuleList()
         self.fc = nn.Sequential(
-            nn.Dropout(0.5),
+            nn.Dropout(0.3),
             nn.Linear(self.feature_size, self.output_size)
         )
 
@@ -60,8 +60,8 @@ class Music2Vec(nn.Module):
             encode = [
                 nn.Conv1d(in_channel, conv_channel, self.kernel_size, self.stride),
                 nn.BatchNorm1d(conv_channel),
-                nn.ReLU(),
-                nn.Dropout(0.5)
+                nn.Tanh(),
+                nn.Dropout(0.3)
             ]
 
             self.feature_extructor.append(
@@ -93,10 +93,10 @@ if __name__ == '__main__':
 
     print('Model test.')
 
-    model = Music2Vec()
+    model = Music2Vec(depth=2)
     print(model)
 
-    dummy = th.randn(1, 1, 22050)
+    dummy = th.randn(1, 1, 22050*2)
     print('input tensor size: [{}, {}, {}]'.format(*dummy.shape))
 
     features = model.features(dummy)

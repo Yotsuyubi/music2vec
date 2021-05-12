@@ -101,6 +101,8 @@ class Remixer(Dataset):
                 wav = PitchShift()(wav)
             if np.random.uniform() < 0.5: 
                 wav = Mask()(wav)
+            # if np.random.uniform() < 0.5: 
+            #     wav *= -1.0
             wavs[i,:] = wav
 
         return th.tensor(wavs)
@@ -110,10 +112,7 @@ class Remixer(Dataset):
 
         mixed = th.zeros(1, self.sample_length)
 
-        volumes = th.rand(4)
-        if random.random() < 0.5:
-            index = random.randint(0, 3)
-            volumes[index] = 0.0
+        volumes = th.ones(4)
 
         for i, volume in enumerate(volumes):
             volume_randamized = wavs[i,:] * volume
