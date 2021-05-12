@@ -69,13 +69,7 @@ class Trainer(pl.LightningModule):
 
         super().__init__()
 
-        self.model = Music2Vec(
-            feature_size,
-            depth, kernel_size,
-            stride, lstm_layers,
-            output_size, audio_channel,
-            channel,
-        )
+        self.model = Music2Vec()
 
         self.optimizer = optimizer(self.parameters(), lr)
 
@@ -134,7 +128,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '-b', '--batch_size', 
         type=int, help='value of batch size. default is 128.', 
-        default=128
+        default=64
     )
     parser.add_argument(
         '-e', '--num_per_epoch', 

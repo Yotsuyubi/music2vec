@@ -4,9 +4,10 @@ import glob
 import os
 import random
 import torchaudio
-from .argument import TimeStreach, PitchShift, Mask
+from .argument import TimeStreach, PitchShift, Mask, ToConstantQ
 from scipy.io import wavfile
 import numpy as np
+from torchvision.utils import save_image
 
 
 GENRES = [
@@ -131,13 +132,14 @@ class Remixer(Dataset):
 
         wavs = self.load_set(compose_set)
         mix = self.random_mixer(wavs)
+        constant_q = ToConstantQ()(mix)
 
-        return mix, GENRES.index(genre)
+        return constant_q, GENRES.index(genre)
 
 
 
 if __name__ == '__main__':
     dataset = Remixer('process/train', sample_length=22050*3)
     mix, genre = dataset.__getitem__(None)
-    torchaudio.save('test.wav', mix, sample_rate=22050)
+    save_image(mix, 'test.png')
     print(mix, genre)

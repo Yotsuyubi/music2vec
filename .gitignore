@@ -5,3 +5,5 @@ process/
 save
 *.wav
 .vscode
+Pipfile.lock
+*.png

@@ -1,6 +1,7 @@
 import torch as th
 import numpy as np
 import librosa
+from torchvision.transforms import ToTensor, ToPILImage, Resize
 
 
 class TimeStreach(object):
@@ -115,3 +116,34 @@ class RandomCrop(object):
         if len(data)-self.length < 0:
             raise ValueError('`length` too large.')
         return Crop(length=self.length, start=start)(data)
+
+
+class ToConstantQ(object):
+
+    def __init__(
+        self,
+        size=(224, 224)
+    ):
+
+        self.size = size
+
+    def __call__(self, x):
+
+        x = x.detach().numpy()[0]
+
+        x = librosa.cqt(x)
+        x = np.abs(x)
+        x = self.norm(x)
+        x = ToPILImage()(x)
+        x = Resize(self.size)(x)
+        x = ToTensor()(x)
+
+        return x
+
+
+    def norm(self, x):
+        x = x + 1e-6
+        x = 20 * np.log10(x).clip(-1, 0)
+        x = ( x - np.min(x) ) / ( np.max(x) - np.min(x) )
+        x = np.uint8(x*255)
+        return x 
