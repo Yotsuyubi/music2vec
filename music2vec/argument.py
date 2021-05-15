@@ -131,7 +131,7 @@ class ToConstantQ(object):
 
         x = x.detach().numpy()[0]
 
-        x = librosa.cqt(x)
+        x = librosa.stft(x, n_fft=self.size[0]*2)
         x = np.abs(x)
         x = self.norm(x)
         x = ToPILImage()(x)
@@ -142,8 +142,8 @@ class ToConstantQ(object):
 
 
     def norm(self, x):
-        x = x + 1e-6
-        x = 20 * np.log10(x).clip(-1, 0)
+        x += 1e-12
+        x = (20 * np.log10(x)).clip(-30, 0)
         x = ( x - np.min(x) ) / ( np.max(x) - np.min(x) )
         x = np.uint8(x*255)
         return x 

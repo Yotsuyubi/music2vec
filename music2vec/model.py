@@ -11,14 +11,20 @@ class Music2Vec(nn.Module):
 
         basemodel = th.hub.load(
             'pytorch/vision:v0.9.0', 
-            'resnet18', pretrained=True
+            'resnet152', pretrained=True
         )
         basemodel.conv1 = nn.Conv2d(
             1, 64, kernel_size=(7, 7), 
             stride=(2, 2), padding=(3, 3), 
             bias=False
         )
-        self.fc = nn.Linear(512, output_size, bias=True)
+        self.fc = nn.Sequential(
+            nn.Dropout(0.5),
+            nn.Linear(2048, 2048//2, bias=True),
+            nn.ReLU(),
+            nn.Dropout(0.5),
+            nn.Linear(2048//2, output_size, bias=True)
+        )
         self.feature = nn.Sequential(*list(basemodel.children())[:-1])
 
 

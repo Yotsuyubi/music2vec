@@ -7,6 +7,7 @@ from pytorch_lightning.callbacks import Callback
 import os
 import shutil
 import argparse
+from torch_optimizer import AdaBelief
 
 
 
@@ -38,14 +39,6 @@ class MyCallback(Callback):
 
         if (current_epoch+1) % self.num_each == 0:
 
-            # if self.epoch_saved_model_path:
-            #     os.remove(self.epoch_saved_model_path)
-
-            # self.epoch_saved_model_path = 'model-epoch_{}.pth'.format(current_epoch)
-            # th.save(
-            #     trainer.model.state_dict(), 
-            #     os.path.join(self.path, self.epoch_saved_model_path)
-            # )
             th.save(
                 trainer.model.model.state_dict(), 
                 self.path
@@ -64,14 +57,19 @@ class Trainer(pl.LightningModule):
         output_size=10, audio_channel=1,
         channel=64,
         # optimizer
-        optimizer=th.optim.Adam, lr=1e-3
+        optimizer=AdaBelief, lr=1e-3
     ):
 
         super().__init__()
 
         self.model = Music2Vec()
 
-        self.optimizer = optimizer(self.parameters(), lr)
+        self.lr = lr
+
+        self.optimizer = optimizer(self.parameters(), self.lr)
+        self.scheduler = th.optim.lr_scheduler.StepLR(
+            self.optimizer, 30
+        )
 
 
     def forward(self, x):
@@ -79,7 +77,7 @@ class Trainer(pl.LightningModule):
 
 
     def configure_optimizers(self):
-        return self.optimizer
+        return [self.optimizer], [self.scheduler]
 
 
     def training_step(self, train_batch, batch_idx):
@@ -160,7 +158,8 @@ if __name__ == '__main__':
     trainer = pl.Trainer(
         gpus=args.num_gpus, 
         callbacks=[MyCallback(args.model_path, args.num_per_epoch)],
-        checkpoint_callback=False, logger=args.logging
+        checkpoint_callback=False, logger=args.logging,
+        auto_lr_find=True
     )
 
     if os.path.exists(args.model_path):
@@ -174,4 +173,5 @@ if __name__ == '__main__':
     else:
         print('train new model.')
 
+    trainer.tune(train_model, train_loader, valid_loader)
     trainer.fit(train_model, train_loader, valid_loader)
