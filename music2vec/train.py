@@ -68,7 +68,7 @@ class Trainer(pl.LightningModule):
 
         self.optimizer = optimizer(self.parameters(), self.lr)
         self.scheduler = th.optim.lr_scheduler.StepLR(
-            self.optimizer, 30
+            self.optimizer, 30, 0.5
         )
 
 
@@ -145,12 +145,12 @@ if __name__ == '__main__':
         lr=args.learning_rate
     )
     train_loader = DataLoader(
-        Remixer(os.path.join(args.processed_root, 'train'), sample_length=22050), 
+        Remixer(os.path.join(args.processed_root, 'train'), sample_length=22050*2), 
         batch_size=args.batch_size,
         num_workers=4
     )
     valid_loader = DataLoader(
-        Remixer(os.path.join(args.processed_root, 'valid'), sample_length=22050), 
+        Remixer(os.path.join(args.processed_root, 'valid'), sample_length=22050*2), 
         batch_size=args.batch_size,
         num_workers=4
     )
@@ -173,5 +173,4 @@ if __name__ == '__main__':
     else:
         print('train new model.')
 
-    trainer.tune(train_model, train_loader, valid_loader)
     trainer.fit(train_model, train_loader, valid_loader)

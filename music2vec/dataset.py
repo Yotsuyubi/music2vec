@@ -96,29 +96,20 @@ class Remixer(Dataset):
         for i, track in enumerate(TRACKS):
             filename = compose_set[track]
             wav = read_wav_and_random_crop(filename, self.sample_length)
-            if np.random.uniform() < 0.5: 
-                wav = TimeStreach()(wav)
-            if np.random.uniform() < 0.5: 
-                wav = PitchShift()(wav)
-            if np.random.uniform() < 0.5: 
-                wav = Mask()(wav)
             wavs[i,:] = wav
 
-        return th.tensor(wavs)
+        return wavs
 
 
     def random_mixer(self, wavs):
 
-        mixed = th.zeros(1, self.sample_length)
+        mixed = np.zeros(self.sample_length)
 
-        volumes = th.rand(4)
-        if random.random() < 0.5:
-            index = random.randint(0, 3)
-            volumes[index] = 0.0
+        volumes = np.ones(4)
 
         for i, volume in enumerate(volumes):
             volume_randamized = wavs[i,:] * volume
-            mixed[0] += volume_randamized
+            mixed += volume_randamized
 
         mixed = (mixed - mixed.min()) / (mixed.max() - mixed.min()) * 2.0 - 1.0
 
@@ -132,6 +123,8 @@ class Remixer(Dataset):
 
         wavs = self.load_set(compose_set)
         mix = self.random_mixer(wavs)
+        mix = TimeStreach()(mix)
+        mix = PitchShift()(mix)
         constant_q = ToConstantQ()(mix)
 
         return constant_q, GENRES.index(genre)

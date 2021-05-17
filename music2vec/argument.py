@@ -2,6 +2,7 @@ import torch as th
 import numpy as np
 import librosa
 from torchvision.transforms import ToTensor, ToPILImage, Resize
+import random
 
 
 class TimeStreach(object):
@@ -126,12 +127,11 @@ class ToConstantQ(object):
     ):
 
         self.size = size
+        self.th = -1 * random.randint(10, 30)
 
     def __call__(self, x):
 
-        x = x.detach().numpy()[0]
-
-        x = librosa.stft(x, n_fft=self.size[0]*2)
+        x = librosa.cqt(x)
         x = np.abs(x)
         x = self.norm(x)
         x = ToPILImage()(x)
@@ -143,7 +143,7 @@ class ToConstantQ(object):
 
     def norm(self, x):
         x += 1e-12
-        x = (20 * np.log10(x)).clip(-30, 0)
+        x = (20 * np.log10(x)).clip(self.th, 0)
         x = ( x - np.min(x) ) / ( np.max(x) - np.min(x) )
         x = np.uint8(x*255)
         return x 

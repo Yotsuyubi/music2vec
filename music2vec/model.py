@@ -20,10 +20,7 @@ class Music2Vec(nn.Module):
         )
         self.fc = nn.Sequential(
             nn.Dropout(0.5),
-            nn.Linear(2048, 2048//2, bias=True),
-            nn.ReLU(),
-            nn.Dropout(0.5),
-            nn.Linear(2048//2, output_size, bias=True)
+            nn.Linear(2048, output_size, bias=True)
         )
         self.feature = nn.Sequential(*list(basemodel.children())[:-1])
 
