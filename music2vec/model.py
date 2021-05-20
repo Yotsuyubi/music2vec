@@ -1,24 +1,7 @@
 import torch as th
 import torch.nn as nn
+from demucs.pretrained import demucs
 
-
-class BLSTM(nn.Module):
-
-    def __init__(self, dim, layers=1):
-        super().__init__()
-        self.lstm = nn.LSTM(
-            bidirectional=True, 
-            num_layers=layers, hidden_size=dim, 
-            input_size=dim
-        )
-        self.linear = nn.Linear(2 * dim, dim)
-
-    def forward(self, x):
-        x = x.permute(2, 0, 1)
-        x = self.lstm(x)[0]
-        x = self.linear(x)
-        x = x.permute(1, 2, 0)
-        return x
 
 
 class Music2Vec(nn.Module):
@@ -32,68 +15,40 @@ class Music2Vec(nn.Module):
     ):
         super().__init__()
 
-        self.feature_size = feature_size
-        self.depth = depth
-        self.kernel_size = kernel_size
-        self.stride = stride
-        self.lstm_layers = lstm_layers
-        self.output_size = output_size
-        self.audio_channel = audio_channel
-        self.channel = channel
+        basemodel = demucs()
+        basemodel.encoder[0][0] = nn.Conv1d(1, 64, kernel_size=(8,), stride=(4,))
 
-        self.lstm = BLSTM(self.feature_size, self.lstm_layers)
-
-        self.feature_extructor = nn.ModuleList()
+        self.encoder = nn.Sequential(
+            *basemodel.encoder
+        )
+        self.lstm = basemodel.lstm
+        self.feature = nn.Sequential(
+            nn.AdaptiveAvgPool1d([1]),
+            nn.Flatten()
+        )
         self.fc = nn.Sequential(
-            nn.Dropout(0.3),
-            nn.Linear(self.feature_size, self.output_size)
+            nn.Linear(2048, 10)
         )
 
-        in_channel = self.audio_channel
-        conv_channel = self.channel
 
-        for i in range(self.depth):
-
-            if i == self.depth - 1:
-                conv_channel = self.feature_size
-
-            encode = [
-                nn.Conv1d(in_channel, conv_channel, self.kernel_size, self.stride),
-                nn.BatchNorm1d(conv_channel),
-                nn.Tanh(),
-                nn.Dropout(0.3)
-            ]
-
-            self.feature_extructor.append(
-                nn.Sequential(*encode)
-            )
-
-            in_channel = conv_channel
-            conv_channel = conv_channel * 2
-
-        self.feature_extructor.append(
-            nn.Sequential(
-                self.lstm,
-                nn.AdaptiveAvgPool1d((1,)),
-                nn.Flatten()
-            )
-        )
 
     def features(self, x):
-        for encode in self.feature_extructor:
-            x = encode(x)
-        return x
+        x = self.encoder(x)
+        x = self.lstm(x)
+        return self.feature(x)
+
 
     def forward(self, x):
         x = self.features(x)
         return self.fc(x)
 
 
+
 if __name__ == '__main__':
 
     print('Model test.')
 
-    model = Music2Vec(depth=2)
+    model = Music2Vec()
     print(model)
 
     dummy = th.randn(1, 1, 22050*2)
