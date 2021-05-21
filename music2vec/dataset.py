@@ -118,16 +118,25 @@ class Remixer(Dataset):
     
     def __getitem__(self, _):
 
-        genre = random.choice(GENRES)
-        compose_set = self.compose_set(genre)
+        x = np.zeros(self.sample_length)
+        y = th.zeros(10)
+        genres = random.sample(GENRES, 3)
 
-        wavs = self.load_set(compose_set)
-        mix = self.random_mixer(wavs)
-        mix = TimeStreach()(mix)
-        mix = PitchShift()(mix)
-        constant_q = ToConstantQ()(mix)
+        for i, genre in enumerate(genres):
+            compose_set = self.compose_set(genre)
 
-        return constant_q, GENRES.index(genre)
+            wavs = self.load_set(compose_set)
+            mix = self.random_mixer(wavs)
+            mix = TimeStreach()(mix)
+            mix = PitchShift()(mix)
+
+            weight = 0.5 if i == 0 else 0.25
+            x += mix * weight
+            y += th.eye(10)[GENRES.index(genre)] * weight
+
+        constant_q = ToConstantQ()(x)
+
+        return constant_q, y
 
 
 

@@ -1,7 +1,7 @@
 import torch as th
 import numpy as np
 import librosa
-from torchvision.transforms import ToTensor, ToPILImage, Resize
+from torchvision.transforms import ToTensor, ToPILImage, Resize, Normalize
 import random
 
 
@@ -127,7 +127,7 @@ class ToConstantQ(object):
     ):
 
         self.size = size
-        self.th = -1 * random.randint(10, 30)
+        
 
     def __call__(self, x):
 
@@ -137,13 +137,14 @@ class ToConstantQ(object):
         x = ToPILImage()(x)
         x = Resize(self.size)(x)
         x = ToTensor()(x)
+        x = Normalize((0.5), (0.5))(x)
 
         return x
 
 
     def norm(self, x):
         x += 1e-12
-        x = (20 * np.log10(x)).clip(self.th, 0)
+        x = (20 * np.log10(x))
         x = ( x - np.min(x) ) / ( np.max(x) - np.min(x) )
         x = np.uint8(x*255)
         return x 

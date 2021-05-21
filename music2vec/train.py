@@ -16,8 +16,9 @@ def accuracy(y_hat, y):
     total = 0
     correct = 0
     _, predicted = th.max(y_hat, 1)
+    _, truth = th.max(y, 1)
     total += y.size(0)
-    correct += (predicted == y).sum().item()
+    correct += (predicted == truth).sum().item()
     return correct / total
 
 
@@ -84,7 +85,7 @@ class Trainer(pl.LightningModule):
 
         x, y = train_batch
         y_hat = self(x)
-        loss = th.nn.CrossEntropyLoss()(y_hat, y)
+        loss = th.nn.L1Loss()(y_hat, y)
         acc = accuracy(y_hat, y)
         self.log('train_loss', loss, prog_bar=True, on_epoch=True, on_step=False)
         self.log('train_acc', acc, prog_bar=True, on_epoch=True, on_step=False)
@@ -94,8 +95,8 @@ class Trainer(pl.LightningModule):
     def validation_step(self, val_batch, batch_idx):
 
         x, y = val_batch
-        y_hat = self(x)
-        loss = th.nn.CrossEntropyLoss()(y_hat, y)
+        y_hat = th.softmax(self(x), dim=-1)
+        loss = th.nn.BCELoss()(y_hat, y)
         acc = accuracy(y_hat, y)
         self.log('val_loss', loss, prog_bar=True, on_epoch=True)
         self.log('val_acc', acc, prog_bar=True, on_epoch=True)

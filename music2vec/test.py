@@ -22,9 +22,9 @@ GENRES = [
 
 
 model = Music2Vec()
-model.load_state_dict(
-    th.load('save/model_.pth', map_location='cpu')
-)
+# model.load_state_dict(
+#     th.load('save/model_.pth', map_location='cpu')
+# )
 model.eval()
 
 
