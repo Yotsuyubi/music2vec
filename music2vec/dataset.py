@@ -123,8 +123,8 @@ class Remixer(Dataset):
 
         wavs = self.load_set(compose_set)
         mix = self.random_mixer(wavs)
-        mix = TimeStreach()(mix)
-        mix = PitchShift()(mix)
+        # mix = TimeStreach()(mix)
+        # mix = PitchShift()(mix)
         constant_q = ToConstantQ()(mix)
 
         return constant_q, GENRES.index(genre)

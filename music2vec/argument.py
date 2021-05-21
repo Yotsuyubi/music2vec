@@ -1,7 +1,7 @@
 import torch as th
 import numpy as np
 import librosa
-from torchvision.transforms import ToTensor, ToPILImage, Resize
+from torchvision.transforms import ToTensor, ToPILImage, Resize, Normalize
 import random
 
 
@@ -127,7 +127,7 @@ class ToConstantQ(object):
     ):
 
         self.size = size
-        self.th = -1 * random.randint(10, 30)
+        
 
     def __call__(self, audio):
 
