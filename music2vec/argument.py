@@ -129,21 +129,64 @@ class ToConstantQ(object):
         self.size = size
         self.th = -1 * random.randint(10, 30)
 
-    def __call__(self, x):
+    def __call__(self, audio):
 
-        x = librosa.cqt(x)
-        x = np.abs(x)
-        x = self.norm(x)
-        x = ToPILImage()(x)
-        x = Resize(self.size)(x)
-        x = ToTensor()(x)
+        image = th.zeros(5, self.size[0], self.size[1])
 
-        return x
+        x = librosa.cqt(audio)
+
+        amp = np.abs(x)
+        amp = self.norm(amp)
+        amp = ToPILImage()(amp)
+        amp = Resize(self.size)(amp)
+        amp = ToTensor()(amp)
+
+        p = np.angle(x)
+        p = ( p - np.min(p) ) / ( np.max(p) - np.min(p) )
+        p = np.uint8(p*255)
+        p = ToPILImage()(p)
+        p = Resize(self.size)(p)
+        p = ToTensor()(p)
+
+        oenv = librosa.onset.onset_strength(audio, hop_length=32)
+        tempogram = librosa.feature.fourier_tempogram(
+            onset_envelope=oenv, hop_length=512
+        )
+        tempogram = np.abs(tempogram)
+        tempogram = ( tempogram - np.min(tempogram) ) / ( np.max(tempogram) - np.min(tempogram) )
+        tempogram = np.uint8(tempogram*255)
+        tempogram = ToPILImage()(tempogram)
+        tempogram = Resize(self.size)(tempogram)
+        tempogram = ToTensor()(tempogram)
+
+        spectral_centroids = librosa.feature.spectral_centroid(audio)[0]
+        spectral_centroids = librosa.stft(spectral_centroids, n_fft=32)
+        spectral_centroids = np.abs(spectral_centroids)
+        spectral_centroids = self.norm(spectral_centroids)
+        spectral_centroids = ToPILImage()(spectral_centroids)
+        spectral_centroids = Resize(self.size)(spectral_centroids)
+        spectral_centroids = ToTensor()(spectral_centroids)
+
+        mfcc = librosa.feature.mfcc(audio)
+        mfcc = ( mfcc - np.min(mfcc) ) / ( np.max(mfcc) - np.min(mfcc) )
+        mfcc = np.uint8(mfcc*255)
+        mfcc = ToPILImage()(mfcc)
+        mfcc = Resize(self.size)(mfcc)
+        mfcc = ToTensor()(mfcc)
+
+        image[0] += amp[0]
+        image[1] += p[0]
+        image[2] += tempogram[0]
+        image[3] += spectral_centroids[0]
+        image[4] += mfcc[0]
+        
+
+        return image
 
 
     def norm(self, x):
         x += 1e-12
-        x = (20 * np.log10(x)).clip(self.th, 0)
+        x = (20 * np.log10(x))
         x = ( x - np.min(x) ) / ( np.max(x) - np.min(x) )
         x = np.uint8(x*255)
         return x 
