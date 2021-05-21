@@ -16,21 +16,33 @@ class Music2Vec(nn.Module):
         super().__init__()
 
         basemodel = demucs()
-        basemodel.encoder[0][0] = nn.Conv1d(1, 64, kernel_size=(8,), stride=(4,))
-
+        
         self.encoder = nn.Sequential(
             *basemodel.encoder
         )
         self.lstm = basemodel.lstm
+        for param in self.encoder.parameters():
+            param.requires_grad = False
+        for param in self.lstm.parameters():
+            param.requires_grad = False
+        self.encoder[0][0] = nn.Conv1d(1, 64, kernel_size=(8,), stride=(4,))
+
         self.feature = nn.Sequential(
             nn.AdaptiveAvgPool1d([1]),
-            nn.Flatten()
+            nn.Flatten(),
+            nn.Linear(2048, 1024),
+            nn.ReLU(),
+            nn.Linear(1024, 512),
+            nn.ReLU(),
+            nn.Linear(512, 1024),
+            nn.ReLU(),
+            nn.Linear(1024, 2048),
         )
         self.fc = nn.Sequential(
+            nn.ReLU(),
             nn.Linear(2048, 10)
         )
-
-
+        
 
     def features(self, x):
         x = self.encoder(x)
