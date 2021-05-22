@@ -11,29 +11,33 @@ class Music2Vec(nn.Module):
 
         basemodel = th.hub.load(
             'pytorch/vision:v0.9.0', 
-            'resnet152', pretrained=True
+            'densenet121', pretrained=True
         )
-        basemodel.conv1 = nn.Conv2d(
+        basemodel.features.conv0 = nn.Conv2d(
             5, 64, kernel_size=25, 
             stride=(2, 2), padding=(3, 3), 
             bias=False
         )
-        self.fc = nn.Sequential(
+        basemodel.classifier = nn.Sequential(
             nn.ReLU(),
             nn.Dropout(0.5),
-            nn.Linear(2048, output_size, bias=True)
+            nn.Linear(1024, output_size, bias=True)
         )
-        self.feature = nn.Sequential(*list(basemodel.children())[:-1])
-        
 
-    def features(self, x):
-        return self.feature(x)
+        self.features_ = basemodel.features
+        self.classifier_ = basemodel.classifier
         
+    
+    def features(self, x):
+        x = self.features_(x)
+        x = nn.AdaptiveMaxPool2d((1, 1))(x)
+        x = nn.Flatten()(x)
+        return x
+    
 
     def forward(self, x):
         x = self.features(x)
-        x = nn.Flatten()(x)
-        return self.fc(x)
+        return self.classifier_(x)
 
 
 if __name__ == '__main__':
@@ -43,7 +47,7 @@ if __name__ == '__main__':
     model = Music2Vec()
     print(model)
 
-    dummy = th.randn(1, 1, 224, 224)
+    dummy = th.randn(1, 5, 224, 224)
     print('input tensor size: [{}, {}, {}]'.format(*dummy.shape))
 
     features = model.features(dummy)
