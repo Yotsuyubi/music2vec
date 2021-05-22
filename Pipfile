@@ -12,6 +12,7 @@ scipy = "*"
 librosa = "*"
 torchvision = "*"
 torch-optimizer = "*"
+emd-signal = "*"
 
 [dev-packages]
 pylint = "*"

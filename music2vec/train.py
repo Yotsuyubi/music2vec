@@ -145,12 +145,12 @@ if __name__ == '__main__':
         lr=args.learning_rate
     )
     train_loader = DataLoader(
-        Remixer(os.path.join(args.processed_root, 'train'), sample_length=22050*2), 
+        Remixer(os.path.join(args.processed_root, 'train'), sample_length=128), 
         batch_size=args.batch_size,
         num_workers=4
     )
     valid_loader = DataLoader(
-        Remixer(os.path.join(args.processed_root, 'valid'), sample_length=22050*2), 
+        Remixer(os.path.join(args.processed_root, 'valid'), sample_length=128), 
         batch_size=args.batch_size,
         num_workers=4
     )

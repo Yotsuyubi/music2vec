@@ -14,7 +14,7 @@ class Music2Vec(nn.Module):
             'densenet121', pretrained=True
         )
         basemodel.features.conv0 = nn.Conv2d(
-            5, 64, kernel_size=25, 
+            1, 64, kernel_size=25, 
             stride=(2, 2), padding=(3, 3), 
             bias=False
         )
