@@ -62,7 +62,7 @@ class Remixer(Dataset):
 
     def __init__(
         self, root,
-        length=1024, sample_length=22050
+        length=100, sample_length=22050
     ):
         super().__init__()
 
@@ -123,11 +123,11 @@ class Remixer(Dataset):
 
         wavs = self.load_set(compose_set)
         mix = self.random_mixer(wavs)
-        # mix = TimeStreach()(mix)
-        # mix = PitchShift()(mix)
+        mix = TimeStreach()(mix)
+        mix = PitchShift()(mix)
         constant_q = ToConstantQ()(mix)
 
-        return constant_q, GENRES.index(genre)
+        return constant_q, th.eye(10)[GENRES.index(genre)]
 
 
 
@@ -135,8 +135,4 @@ if __name__ == '__main__':
     dataset = Remixer('process/train', sample_length=22050*3)
     mix, genre = dataset.__getitem__(None)
     save_image(mix[0], 'test_amp.png')
-    save_image(mix[1], 'test_phase.png')
-    save_image(mix[2], 'test_tempo.png')
-    save_image(mix[3], 'test_centroid.png')
-    save_image(mix[4], 'test_mfcc.png')
     print(mix, genre)

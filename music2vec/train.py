@@ -16,8 +16,9 @@ def accuracy(y_hat, y):
     total = 0
     correct = 0
     _, predicted = th.max(y_hat, 1)
+    _, truth = th.max(y, 1)
     total += y.size(0)
-    correct += (predicted == y).sum().item()
+    correct += (predicted == truth).sum().item()
     return correct / total
 
 
@@ -57,7 +58,7 @@ class Trainer(pl.LightningModule):
         output_size=10, audio_channel=1,
         channel=64,
         # optimizer
-        optimizer=AdaBelief, lr=1e-3
+        optimizer=th.optim.Adam, lr=1e-3
     ):
 
         super().__init__()
@@ -66,9 +67,18 @@ class Trainer(pl.LightningModule):
 
         self.lr = lr
 
-        self.optimizer = optimizer(self.parameters(), self.lr)
+        self.optimizer = optimizer([
+              {
+                'params': self.model.features_.parameters()
+              },
+              {
+                'params': self.model.classifier_.parameters(),# 'lr': 1e-5
+              },
+          ], 
+          self.lr, weight_decay=1e-6
+        )
         self.scheduler = th.optim.lr_scheduler.StepLR(
-            self.optimizer, 30, 0.5
+            self.optimizer, 1000, 0.5
         )
 
 
@@ -84,7 +94,7 @@ class Trainer(pl.LightningModule):
 
         x, y = train_batch
         y_hat = self(x)
-        loss = th.nn.CrossEntropyLoss()(y_hat, y)
+        loss = th.nn.BCELoss()(y_hat, y)
         acc = accuracy(y_hat, y)
         self.log('train_loss', loss, prog_bar=True, on_epoch=True, on_step=False)
         self.log('train_acc', acc, prog_bar=True, on_epoch=True, on_step=False)
@@ -95,7 +105,7 @@ class Trainer(pl.LightningModule):
 
         x, y = val_batch
         y_hat = self(x)
-        loss = th.nn.CrossEntropyLoss()(y_hat, y)
+        loss = th.nn.BCELoss()(y_hat, y)
         acc = accuracy(y_hat, y)
         self.log('val_loss', loss, prog_bar=True, on_epoch=True)
         self.log('val_acc', acc, prog_bar=True, on_epoch=True)
@@ -145,12 +155,12 @@ if __name__ == '__main__':
         lr=args.learning_rate
     )
     train_loader = DataLoader(
-        Remixer(os.path.join(args.processed_root, 'train'), sample_length=22050*2), 
+        Remixer(os.path.join(args.processed_root, 'train'), sample_length=22050*3), 
         batch_size=args.batch_size,
         num_workers=4
     )
     valid_loader = DataLoader(
-        Remixer(os.path.join(args.processed_root, 'valid'), sample_length=22050*2), 
+        Remixer(os.path.join(args.processed_root, 'valid'), sample_length=22050*3), 
         batch_size=args.batch_size,
         num_workers=4
     )
@@ -159,7 +169,8 @@ if __name__ == '__main__':
         gpus=args.num_gpus, 
         callbacks=[MyCallback(args.model_path, args.num_per_epoch)],
         checkpoint_callback=False, logger=args.logging,
-        auto_lr_find=True
+        num_sanity_val_steps=0,
+        check_val_every_n_epoch=10
     )
 
     if os.path.exists(args.model_path):
