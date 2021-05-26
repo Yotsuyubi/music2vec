@@ -12,6 +12,7 @@ scipy = "*"
 librosa = "*"
 torchvision = "*"
 torch-optimizer = "*"
+self-attention-cv = "*"
 
 [dev-packages]
 pylint = "*"
