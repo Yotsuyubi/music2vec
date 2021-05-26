@@ -134,5 +134,6 @@ class Remixer(Dataset):
 if __name__ == '__main__':
     dataset = Remixer('process/train', sample_length=22050*3)
     mix, genre = dataset.__getitem__(None)
-    save_image(mix[0], 'test_amp.png')
-    print(mix, genre)
+    print(mix.shape, genre)
+    for i in range(mix.shape[0]):
+        save_image(mix[i], 'test_{}.png'.format(i))

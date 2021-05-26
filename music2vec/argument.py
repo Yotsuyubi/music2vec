@@ -127,31 +127,31 @@ class ToConstantQ(object):
     ):
 
         self.size = size
+        self.channel = 1024 // self.size[0]
         
 
     def __call__(self, audio):
 
-        image = th.zeros(1, self.size[0], self.size[1])
+        image = th.zeros(self.channel, self.size[0], self.size[1])
 
-        x = librosa.cqt(audio)
+        x = librosa.stft(audio)[:1024]
+        x = np.abs(x)
+        x = self.norm(x)
 
-        amp = np.abs(x)
-        amp = self.norm(amp)
-        amp = ToPILImage()(amp)
-        amp = Resize(self.size)(amp)
-        amp = ColorJitter(0.5, 0.5, 0.5)(amp)
-        amp = ToTensor()(amp)
-        amp = Normalize((0.5), (0.5))(amp)
+        for i in range(self.channel):
+            amp = x[128*i:128*(i+1),:]
+            amp = ToPILImage()(amp)
+            amp = Resize(self.size)(amp)
+            amp = ToTensor()(amp)
+            amp = Normalize((0.5), (0.5))(amp)
 
-        image[0] += amp[0]
+            image[i] += amp[0]
         
-
         return image
 
 
     def norm(self, x):
-        x += 1e-12
-        x = (20 * np.log10(x))
+        x = librosa.amplitude_to_db(x, ref=np.max)
         x = ( x - np.min(x) ) / ( np.max(x) - np.min(x) )
         x = np.uint8(x*255)
         return x 
