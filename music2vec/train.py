@@ -1,8 +1,11 @@
 import torch as th
 import pytorch_lightning as pl
+from torchvision import transforms
 from .model import Music2Vec
 from .dataset import Remixer
 from torch.utils.data import DataLoader
+from torchvision.datasets import ImageFolder
+from torchvision.transforms import ToTensor, Compose, Grayscale
 from pytorch_lightning.callbacks import Callback
 import os
 import shutil
@@ -145,26 +148,31 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
+    transforms = Compose([
+        Grayscale(),
+        ToTensor()
+    ])
+
     train_model = Trainer(
         lr=args.learning_rate
     )
     train_loader = DataLoader(
-        Remixer(os.path.join(args.processed_root, 'train'), sample_length=22050*3, length=args.batch_size*5), 
+        ImageFolder(os.path.join(args.processed_root, 'train'), transform=transforms), 
         batch_size=args.batch_size,
-        num_workers=4
+        num_workers=4, shuffle=True
     )
     valid_loader = DataLoader(
-        Remixer(os.path.join(args.processed_root, 'valid'), sample_length=22050*3, length=args.batch_size), 
+        ImageFolder(os.path.join(args.processed_root, 'valid'), transform=transforms), 
         batch_size=args.batch_size,
-        num_workers=4
+        num_workers=4, shuffle=True
     )
 
     trainer = pl.Trainer(
         gpus=args.num_gpus, 
         callbacks=[MyCallback(args.model_path, args.num_per_epoch)],
         checkpoint_callback=False, logger=args.logging,
-        num_sanity_val_steps=0,
-        check_val_every_n_epoch=1
+        auto_lr_find=False, limit_train_batches=1000,
+        val_check_interval=10, limit_val_batches=10
     )
 
     if os.path.exists(args.model_path):

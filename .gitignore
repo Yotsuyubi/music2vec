@@ -7,3 +7,4 @@ save
 .vscode
 Pipfile.lock
 *.png
+spectrum/

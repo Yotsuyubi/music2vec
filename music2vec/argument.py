@@ -1,8 +1,7 @@
 import torch as th
 import numpy as np
 import librosa
-from torchvision.transforms import ToTensor, ToPILImage, Resize, Normalize, ColorJitter
-import random
+from torchvision.transforms import ToTensor, ToPILImage, Resize, Normalize
 
 
 class TimeStreach(object):
@@ -132,21 +131,21 @@ class ToConstantQ(object):
 
     def __call__(self, audio):
 
-        image = th.zeros(self.channel, self.size[0], self.size[1])
+        image = th.zeros(1, self.size[0], self.size[1])
 
-        x = librosa.stft(audio)[:1024]
+        x = librosa.cqt(audio)
         x = np.abs(x)
         x = self.norm(x)
 
-        for i in range(self.channel):
-            amp = x[128*i:128*(i+1),:]
-            amp = ToPILImage()(amp)
-            amp = Resize(self.size)(amp)
-            amp = ToTensor()(amp)
-            amp = Normalize((0.5), (0.5))(amp)
+        amp = np.abs(x)
+        amp = self.norm(amp)
+        amp = ToPILImage()(amp)
+        amp = Resize(self.size)(amp)
+        amp = ToTensor()(amp)
+        amp = Normalize((0.5), (0.5))(amp)
 
-            image[i] += amp[0]
-        
+        image[0] += amp[0]        
+
         return image
 
 
