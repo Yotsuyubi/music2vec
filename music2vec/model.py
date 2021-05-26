@@ -2,53 +2,131 @@ import torch as th
 import torch.nn as nn
 
 
+class ConvBlock(nn.Module):
+
+    def __init__(self, filter, kernel):
+
+        super().__init__()
+
+        self.conv = nn.Conv2d(filter, filter, kernel, padding=(kernel-1)//2)
+        self.BN = nn.BatchNorm2d(filter)
+
+    def forward(self, x):
+        x = self.BN(x)
+        x = self.conv(x)
+        x = nn.ReLU()(x)
+        return x
+
+
+class MultiScaleBlock(nn.Module):
+
+    def __init__(self, filter):
+
+        super().__init__()
+
+        self.inconv = nn.Conv2d(filter, filter, 1)
+
+        self.conv1x1 = ConvBlock(filter, 1)
+        self.conv3x3 = nn.Sequential(
+            ConvBlock(filter, 1),
+            ConvBlock(filter, 3)
+        )
+        self.conv5x5 = nn.Sequential(
+            ConvBlock(filter, 1),
+            ConvBlock(filter, 5)      
+        )
+        self.pool = nn.Sequential(
+            nn.MaxPool2d(3, 1, 1),
+            ConvBlock(filter, 1)
+        )
+        self.outconv = nn.Conv2d(filter*4, filter, 1)
+
+    def forward(self, x):
+
+        x = self.inconv(x)
+
+        conv1x1 = self.conv1x1(x)
+        conv3x3 = self.conv3x3(x)
+        conv5x5 = self.conv5x5(x)
+        pool = self.pool(x)
+
+        out = th.cat([conv1x1, conv3x3, conv5x5, pool], dim=1)
+        out = self.outconv(out)
+
+        return out
+
+
+class DenseBlock(nn.Module):
+
+    def __init__(self, num_blocks, filter):
+
+        super().__init__()
+        self.dense = nn.ModuleList(
+            [ MultiScaleBlock(filter) for _ in range(num_blocks) ]
+        )
+
+
+    def forward(self, x):
+
+        skip = x
+        for dense in self.dense:
+            x = dense(x)
+            x += skip
+        
+        return x
+
+    
+class TransitionBlock(nn.Module):
+
+    def __init__(self, in_filter, out_filter):
+
+        super().__init__()
+        self.seq = nn.Sequential(
+            nn.BatchNorm2d(in_filter),
+            nn.ReLU(),
+            nn.Conv2d(in_filter, out_filter, 1),
+            nn.AvgPool2d(2, 2),
+            nn.BatchNorm2d(out_filter),
+            nn.ReLU(),
+            nn.AdaptiveAvgPool2d((1, 1)),
+            nn.Flatten()
+        )
+
+
+    def forward(self, x):      
+        return self.seq(x)
+
+
 class Music2Vec(nn.Module):
 
     def __init__(
-        self, output_size=10
+        self, output_size=10, filter=64, num_blocks=3, features=1024
     ):
         super().__init__()
 
-        self.basemodel = th.hub.load(
-            'pytorch/vision:v0.9.0', 
-            'densenet201', pretrained=True
-        )
-        self.basemodel.features.conv0 = nn.Conv2d(
-            8, 64, kernel_size=25, 
-            stride=(2, 2), padding=(3, 3), 
-            bias=False
-        )
-        self.basemodel.classifier = nn.Sequential(
-            nn.BatchNorm1d(1024),
+        self.in_conv = nn.Sequential(
+            nn.Conv2d(8, filter, 3, 1),
+            nn.BatchNorm2d(filter),
             nn.ReLU(),
-            nn.Linear(1024, output_size, bias=True)
+            nn.MaxPool2d((1, 4))
+        )
+        self.dense_block = DenseBlock(num_blocks, filter)
+        self.transition = TransitionBlock(filter, features)
+        self.fc = nn.Sequential(
+            nn.Linear(features, output_size),
+            nn.Softmax(dim=-1)
         )
 
-        self.features_ = nn.Sequential(
-            self.basemodel.features,
-            nn.Flatten(),
-            nn.BatchNorm1d(17280),
-            nn.ReLU(),
-            nn.Linear(17280, 17280//2, bias=True),
-            nn.BatchNorm1d(17280//2),
-            nn.ReLU(),
-            nn.Linear(17280//2, 17280//4, bias=True),
-            nn.BatchNorm1d(17280//4),
-            nn.ReLU(),
-            nn.Linear(17280//4, 1024, bias=True)
-        )
-        self.classifier_ = self.basemodel.classifier
-        
     
     def features(self, x):
-        x = self.features_(x)
+        x = self.in_conv(x)
+        x = self.dense_block(x)
+        x = self.transition(x)
         return x
     
 
     def forward(self, x):
-        x = self.features(x)
-        x = self.classifier_(x)
-        return nn.Sigmoid()(x)
+        return self.fc( self.features(x) )
 
 
 if __name__ == '__main__':
@@ -58,7 +136,7 @@ if __name__ == '__main__':
     model = Music2Vec()
     print(model)
 
-    dummy = th.randn(1, 1, 128, 128)
+    dummy = th.randn(1, 8, 128, 128)
     print('input tensor size: [{}, {}, {}, {}]'.format(*dummy.shape))
 
     features = model.features(dummy)

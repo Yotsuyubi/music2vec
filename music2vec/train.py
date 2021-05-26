@@ -67,15 +67,9 @@ class Trainer(pl.LightningModule):
 
         self.lr = lr
 
-        self.optimizer = optimizer([
-              {
-                'params': self.model.features_.parameters()
-              },
-              {
-                'params': self.model.classifier_.parameters(),# 'lr': 1e-5
-              },
-          ], 
-          self.lr, weight_decay=1e-6
+        self.optimizer = optimizer(
+			self.model.parameters(), 
+          	self.lr#, weight_decay=1e-6
         )
         self.scheduler = th.optim.lr_scheduler.StepLR(
             self.optimizer, 1000, 0.5
@@ -155,12 +149,12 @@ if __name__ == '__main__':
         lr=args.learning_rate
     )
     train_loader = DataLoader(
-        Remixer(os.path.join(args.processed_root, 'train'), sample_length=22050*3), 
+        Remixer(os.path.join(args.processed_root, 'train'), sample_length=22050*3, length=args.batch_size*5), 
         batch_size=args.batch_size,
         num_workers=4
     )
     valid_loader = DataLoader(
-        Remixer(os.path.join(args.processed_root, 'valid'), sample_length=22050*3), 
+        Remixer(os.path.join(args.processed_root, 'valid'), sample_length=22050*3, length=args.batch_size), 
         batch_size=args.batch_size,
         num_workers=4
     )
@@ -170,7 +164,7 @@ if __name__ == '__main__':
         callbacks=[MyCallback(args.model_path, args.num_per_epoch)],
         checkpoint_callback=False, logger=args.logging,
         num_sanity_val_steps=0,
-        check_val_every_n_epoch=10
+        check_val_every_n_epoch=1
     )
 
     if os.path.exists(args.model_path):
