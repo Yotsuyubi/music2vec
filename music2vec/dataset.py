@@ -4,10 +4,12 @@ import glob
 import os
 import random
 import torchaudio
+from torchaudio.datasets.utils import download_url
 from .argument import TimeStreach, PitchShift, Mask, ToConstantQ
 from scipy.io import wavfile
 import numpy as np
 from torchvision.utils import save_image
+from torchaudio.datasets.gtzan import GTZAN, load_gtzan_item, gtzan_genres
 
 
 GENRES = [
@@ -131,9 +133,42 @@ class Remixer(Dataset):
         return constant_q, th.eye(10)[GENRES.index(genre)]
 
 
+class GT(GTZAN):
+
+    def __init__(
+        self, 
+        root,
+        download=False,
+        subset=None
+    ):
+
+        super().__init__(root, download=download, subset=subset)
+
+
+    def __getitem__(self, n):
+
+        fileid = self._walker[n]
+        item = load_gtzan_item(fileid, self._path, self._ext_audio)
+        waveform, sample_rate, label = item
+
+        waveform = waveform.detach().numpy()
+        offset = random.randint(0, waveform.shape[-1]-22050*6)
+        waveform = waveform[0, offset:offset+22050*6]
+        waveform += np.random.rand(*waveform.shape)*np.random.rand(1)*0.001
+        waveform = (waveform - waveform.min()) / (waveform.max() - waveform.min()) * 2.0 - 1.0
+
+        # waveform = TimeStreach()(waveform)
+        waveform = PitchShift()(waveform)
+        image = ToConstantQ()(waveform)
+        # onehot = th.eye(10)[gtzan_genres.index(label)]
+
+        return image, gtzan_genres.index(label)
+
+
 
 if __name__ == '__main__':
-    dataset = Remixer('process/train', sample_length=22050*3)
-    mix, genre = dataset.__getitem__(0)
-    save_image(mix[0], 'test_amp.png')
-    print(mix[0], genre)
+    dataset = GT('download', download=True, subset='training')
+    mix, genre = dataset.__getitem__(10)
+    for i in range(4):
+        save_image(mix[i], 'test{}.png'.format(i))
+    print(mix.shape, genre)

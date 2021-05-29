@@ -2,20 +2,33 @@ import torch as th
 import torch.nn as nn
 
 
+class Swish(nn.Module):
+
+    def __init__(self):
+        super().__init__()
+        self.beta = nn.Parameter(
+            th.tensor(1.0)
+        )
+
+
+    def forward(self, x):
+        return x*nn.Sigmoid()(x*self.beta)
+
+
 class ConvBlock(nn.Module):
 
     def __init__(self, filter, kernel):
 
         super().__init__()
 
-        self.conv = nn.Conv2d(filter, filter, kernel, padding=(kernel-1)//2)
-        self.BN = nn.BatchNorm2d(filter)
+        self.seq = nn.Sequential(
+            nn.Conv2d(filter, filter, kernel, padding=(kernel-1)//2),
+            nn.BatchNorm2d(filter),
+            Swish()
+        )
 
     def forward(self, x):
-        x = self.BN(x)
-        x = self.conv(x)
-        x = nn.ReLU()(x)
-        return x
+        return self.seq(x)
 
 
 class MultiScaleBlock(nn.Module):
@@ -83,11 +96,11 @@ class TransitionBlock(nn.Module):
         super().__init__()
         self.seq = nn.Sequential(
             nn.BatchNorm2d(in_filter),
-            nn.ReLU(),
+            Swish(),
             nn.Conv2d(in_filter, out_filter, 1),
             nn.AvgPool2d(2, 2),
             nn.BatchNorm2d(out_filter),
-            nn.ReLU(),
+            Swish(),
             nn.AdaptiveAvgPool2d((1, 1)),
             nn.Flatten()
         )
@@ -105,9 +118,9 @@ class Music2Vec(nn.Module):
         super().__init__()
 
         self.in_conv = nn.Sequential(
-            nn.Conv2d(8, filter, 3, 1),
+            nn.Conv2d(4, filter, 3, 1),
             nn.BatchNorm2d(filter),
-            nn.ReLU(),
+            Swish(),
             nn.MaxPool2d((1, 4))
         )
         self.dense_block = DenseBlock(num_blocks, filter)

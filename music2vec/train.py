@@ -1,8 +1,9 @@
 import torch as th
 import pytorch_lightning as pl
+from torch.optim.adam import Adam
 from torchvision import transforms
 from .model import Music2Vec
-from .dataset import Remixer
+from .dataset import GT
 from torch.utils.data import DataLoader
 from torchvision.datasets import ImageFolder
 from torchvision.transforms import ToTensor, Compose, Grayscale
@@ -14,14 +15,15 @@ from torch_optimizer import AdaBelief
 
 
 
+
 def accuracy(y_hat, y):
 
     total = 0
     correct = 0
     _, predicted = th.max(y_hat, 1)
-    _, truth = th.max(y, 1)
+    # _, truth = th.max(y, 1)
     total += y.size(0)
-    correct += (predicted == truth).sum().item()
+    correct += (predicted == y).sum().item()
     return correct / total
 
 
@@ -61,7 +63,7 @@ class Trainer(pl.LightningModule):
         output_size=10, audio_channel=1,
         channel=64,
         # optimizer
-        optimizer=th.optim.Adam, lr=1e-3
+        optimizer=Adam, lr=1e-3
     ):
 
         super().__init__()
@@ -75,9 +77,12 @@ class Trainer(pl.LightningModule):
           	self.lr#, weight_decay=1e-6
         )
         self.scheduler = th.optim.lr_scheduler.StepLR(
-            self.optimizer, 1000, 0.5
+            self.optimizer, 100, 0.5
         )
 
+
+    def loss_func(self, y, y_true):
+        return th.nn.NLLLoss()(th.log(y), y_true)
 
     def forward(self, x):
         return self.model(x)
@@ -91,7 +96,7 @@ class Trainer(pl.LightningModule):
 
         x, y = train_batch
         y_hat = self(x)
-        loss = th.nn.BCELoss()(y_hat, y)
+        loss = self.loss_func(y_hat, y)
         acc = accuracy(y_hat, y)
         self.log('train_loss', loss, prog_bar=True, on_epoch=True, on_step=False)
         self.log('train_acc', acc, prog_bar=True, on_epoch=True, on_step=False)
@@ -102,10 +107,19 @@ class Trainer(pl.LightningModule):
 
         x, y = val_batch
         y_hat = self(x)
-        loss = th.nn.BCELoss()(y_hat, y)
+        loss = self.loss_func(y_hat, y)
         acc = accuracy(y_hat, y)
         self.log('val_loss', loss, prog_bar=True, on_epoch=True)
         self.log('val_acc', acc, prog_bar=True, on_epoch=True)
+
+    def test_step(self, test_batch, batch_idx):
+
+        x, y = test_batch
+        y_hat = self(x)
+        loss = self.loss_func(y_hat, y)
+        acc = accuracy(y_hat, y)
+        self.log('test_loss', loss, prog_bar=True, on_epoch=True)
+        self.log('test_acc', acc, prog_bar=True, on_epoch=True)
 
 
 if __name__ == '__main__':
@@ -157,22 +171,21 @@ if __name__ == '__main__':
         lr=args.learning_rate
     )
     train_loader = DataLoader(
-        ImageFolder(os.path.join(args.processed_root, 'train'), transform=transforms), 
+        GT(args.processed_root, download=True, subset='training'), 
         batch_size=args.batch_size,
         num_workers=4, shuffle=True
     )
     valid_loader = DataLoader(
-        ImageFolder(os.path.join(args.processed_root, 'valid'), transform=transforms), 
+        GT(args.processed_root, download=True, subset='validation'), 
         batch_size=args.batch_size,
-        num_workers=4, shuffle=True
+        num_workers=4, shuffle=False
     )
 
     trainer = pl.Trainer(
         gpus=args.num_gpus, 
         callbacks=[MyCallback(args.model_path, args.num_per_epoch)],
         checkpoint_callback=False, logger=args.logging,
-        auto_lr_find=False, limit_train_batches=1000,
-        val_check_interval=10, limit_val_batches=10
+        auto_lr_find=False,
     )
 
     if os.path.exists(args.model_path):
