@@ -1,0 +1,2 @@
+include requirements.txt
+include music2vec/pretrained/model.pth

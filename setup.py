@@ -188,4 +188,5 @@ setup(
     #     "Say Thanks!": "http://saythanks.io/to/example",
     #     "Source": "https://github.com/pypa/sampleproject/",
     # },
+    include_package_data=True,
 )
