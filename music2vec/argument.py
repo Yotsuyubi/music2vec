@@ -123,7 +123,7 @@ class ToConstantQ(object):
 
     def __init__(
         self,
-        size=(128, 644)
+        size=(128, 625)
     ):
 
         self.size = size
@@ -134,10 +134,9 @@ class ToConstantQ(object):
 
         image = th.zeros(4, self.size[0], self.size[1])
 
-        # x = librosa.stft(audio)
         x = librosa.feature.melspectrogram(audio, n_mels=512, hop_length=1024)
         amp = np.abs(x)
-        amp = self.norm(amp)[:512, :644]
+        amp = self.norm(amp)[:512, :self.size[-1]]
 
         for i in range(4):
             a = amp[i*128:(i+1)*128, :]
@@ -153,7 +152,7 @@ class ToConstantQ(object):
         x = librosa.power_to_db(x, ref=np.max)
         current_freq = np.linspace(20, 22050//2, 512)
         log_scale = np.logspace(1.7, 4.04, 512)
-        for i in range(130):
+        for i in range(self.size[-1]):
             f = interpolate.interp1d(current_freq, x[:,i])
             x[:,i] = f(log_scale)
         x = ( x - np.min(x) ) / ( np.max(x) - np.min(x) )
