@@ -123,7 +123,7 @@ class ToConstantQ(object):
 
     def __init__(
         self,
-        size=(128, 644)
+        size=(128, 625)
     ):
 
         self.size = size

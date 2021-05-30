@@ -3,7 +3,7 @@ import pytorch_lightning as pl
 from torch.optim.adam import Adam
 from torchvision import transforms
 from .model import Music2Vec
-from .dataset import GT
+from .dataset import Remixer
 from torch.utils.data import DataLoader
 from torchvision.datasets import ImageFolder
 from torchvision.transforms import ToTensor, Compose, Grayscale
@@ -159,29 +159,23 @@ if __name__ == '__main__':
         default=0
     )
     parser.add_argument(
-        '-d', '--depth', 
-        type=int, help='number of network layers. default is 4.', 
-        default=4
-    )
-    parser.add_argument(
         '-s', '--sample_length', 
-        type=int, help='length of samples. default is 22050.', 
-        default=22050
+        type=int, help='length of samples. default is 22050*30.', 
+        default=22050*29
     )
 
     args = parser.parse_args()
 
     train_model = Trainer(
-        lr=args.learning_rate,
-        depth=args.depth
+        lr=args.learning_rate
     )
     train_loader = DataLoader(
-        GT(args.processed_root, download=True, subset='training'), 
+        Remixer(os.path.join(args.processed_root, 'train'), length=int(8*65), sample_length=args.sample_length), 
         batch_size=args.batch_size,
         num_workers=4, shuffle=True
     )
     valid_loader = DataLoader(
-        GT(args.processed_root, download=True, subset='validation'), 
+        Remixer(os.path.join(args.processed_root, 'valid'), length=int(8*65*0.6), sample_length=args.sample_length), 
         batch_size=args.batch_size,
         num_workers=4, shuffle=False
     )

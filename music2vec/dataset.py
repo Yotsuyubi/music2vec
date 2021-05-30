@@ -32,13 +32,12 @@ def read_wav_and_random_crop(filename, duration=None):
 
     info = torchaudio.info(filename)
     sample_length = info.num_frames
-    offset = random.randint(0, sample_length-duration*2)
     data, _ = torchaudio.load(
-        filename, frame_offset=offset,
-        num_frames=duration*2 if duration else -1
+        filename, frame_offset=0
     )
+    data = data.detach().numpy()[0,::2]
 
-    return data.detach().numpy()[0,::2]
+    return data[:duration]
 
 
 def get_subset(path):
@@ -65,7 +64,7 @@ class Remixer(Dataset):
 
     def __init__(
         self, root,
-        length=100, sample_length=22050
+        length=100, sample_length=22050*29
     ):
         super().__init__()
 
@@ -127,8 +126,8 @@ class Remixer(Dataset):
 
         wavs = self.load_set(compose_set)
         mix = self.random_mixer(wavs)
-        mix = TimeStreach()(mix)
-        mix = PitchShift()(mix)
+        # mix = TimeStreach()(mix)
+        # mix = PitchShift()(mix)
         constant_q = ToConstantQ()(mix)
 
         return constant_q, th.eye(10)[GENRES.index(genre)]
@@ -163,7 +162,7 @@ class GT(GTZAN):
 
 
 if __name__ == '__main__':
-    dataset = GT('spectrum', download=True, subset='training')
+    dataset = Remixer('process/train')
     mix, genre = dataset.__getitem__(10)
     print(mix, genre)
     save_image(mix[0], 'test.png')
