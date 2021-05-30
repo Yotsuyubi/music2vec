@@ -1,13 +1,15 @@
 import torch as th
 import numpy as np
 import librosa
+from torchvision.transforms import ToTensor, ToPILImage, Resize, Normalize, RandomErasing
+from scipy import interpolate
 
 
 class TimeStreach(object):
 
     def __init__(
         self,
-        rate_width=1 # 0.5 ~ 1.5
+        rate_width=0.2 # 0.5 ~ 1.5
     ):
 
         self.rate_width = rate_width
@@ -115,3 +117,45 @@ class RandomCrop(object):
         if len(data)-self.length < 0:
             raise ValueError('`length` too large.')
         return Crop(length=self.length, start=start)(data)
+
+
+class ToConstantQ(object):
+
+    def __init__(
+        self,
+        size=(128, 644)
+    ):
+
+        self.size = size
+        self.channel = 1024 // self.size[0]
+        
+
+    def __call__(self, audio):
+
+        image = th.zeros(4, self.size[0], self.size[1])
+
+        # x = librosa.stft(audio)
+        x = librosa.feature.melspectrogram(audio, n_mels=512, hop_length=1024)
+        amp = np.abs(x)
+        amp = self.norm(amp)[:512, :644]
+
+        for i in range(4):
+            a = amp[i*128:(i+1)*128, :]
+            a = ToPILImage()(a)
+            a = ToTensor()(a)
+            a = Normalize((0.5), (0.5))(a)
+            image[i] += a[0] 
+
+        return image
+
+
+    def norm(self, x):
+        x = librosa.power_to_db(x, ref=np.max)
+        current_freq = np.linspace(20, 22050//2, 512)
+        log_scale = np.logspace(1.7, 4.04, 512)
+        for i in range(130):
+            f = interpolate.interp1d(current_freq, x[:,i])
+            x[:,i] = f(log_scale)
+        x = ( x - np.min(x) ) / ( np.max(x) - np.min(x) )
+        x = np.uint8(x*255)
+        return x 

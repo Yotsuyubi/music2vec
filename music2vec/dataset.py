@@ -4,9 +4,12 @@ import glob
 import os
 import random
 import torchaudio
-from .argument import TimeStreach, PitchShift, Mask
+from torchaudio.datasets.utils import download_url
+from .argument import TimeStreach, PitchShift, Mask, ToConstantQ
 from scipy.io import wavfile
 import numpy as np
+from torchvision.utils import save_image
+from torchaudio.datasets.gtzan import GTZAN, load_gtzan_item, gtzan_genres
 
 
 GENRES = [
@@ -61,7 +64,7 @@ class Remixer(Dataset):
 
     def __init__(
         self, root,
-        length=1024, sample_length=22050
+        length=100, sample_length=22050
     ):
         super().__init__()
 
@@ -71,6 +74,7 @@ class Remixer(Dataset):
         self.sample_length = sample_length
 
         self.subset = get_subset(self.root)
+        self.labels = sum([list(range(10)) for _ in range(self.length//10)], [])
 
 
     def __len__(self):
@@ -95,48 +99,74 @@ class Remixer(Dataset):
         for i, track in enumerate(TRACKS):
             filename = compose_set[track]
             wav = read_wav_and_random_crop(filename, self.sample_length)
-            if np.random.uniform() < 0.5: 
-                wav = TimeStreach()(wav)
-            if np.random.uniform() < 0.5: 
-                wav = PitchShift()(wav)
-            if np.random.uniform() < 0.5: 
-                wav = Mask()(wav)
-            # if np.random.uniform() < 0.5: 
-            #     wav *= -1.0
             wavs[i,:] = wav
 
-        return th.tensor(wavs)
+        return wavs
 
 
     def random_mixer(self, wavs):
 
-        mixed = th.zeros(1, self.sample_length)
+        mixed = np.zeros(self.sample_length)
 
-        volumes = th.ones(4)
+        volumes = np.ones(4)
 
         for i, volume in enumerate(volumes):
             volume_randamized = wavs[i,:] * volume
-            mixed[0] += volume_randamized
+            mixed += volume_randamized
 
         mixed = (mixed - mixed.min()) / (mixed.max() - mixed.min()) * 2.0 - 1.0
 
         return mixed
 
     
-    def __getitem__(self, _):
+    def __getitem__(self, idx):
 
-        genre = random.choice(GENRES)
+        genre = GENRES[self.labels[idx]]
         compose_set = self.compose_set(genre)
 
         wavs = self.load_set(compose_set)
         mix = self.random_mixer(wavs)
+        mix = TimeStreach()(mix)
+        mix = PitchShift()(mix)
+        constant_q = ToConstantQ()(mix)
 
-        return mix, GENRES.index(genre)
+        return constant_q, th.eye(10)[GENRES.index(genre)]
+
+
+class GT(GTZAN):
+
+    def __init__(
+        self, 
+        root,
+        download=False,
+        subset=None
+    ):
+
+        super().__init__(root, download=download, subset=subset)
+
+
+    def __getitem__(self, n):
+
+        fileid = self._walker[n]
+        item = load_gtzan_item(fileid, self._path, self._ext_audio)
+        waveform, sample_rate, label = item
+
+        waveform = waveform.detach().numpy()
+        waveform = waveform[0, :22050*30]
+        # waveform += np.random.rand(*waveform.shape)*np.random.rand(1)*0.1
+        # waveform = TimeStreach(0.1)(waveform)
+        # waveform = PitchShift(3)(waveform)
+        waveform = (waveform - waveform.min()) / (waveform.max() - waveform.min()) * 2.0 - 1.0
+        image = ToConstantQ()(waveform)
+        onehot = th.eye(10)[gtzan_genres.index(label)]
+
+        return image, onehot
 
 
 
 if __name__ == '__main__':
-    dataset = Remixer('process/train', sample_length=22050*3)
-    mix, genre = dataset.__getitem__(None)
-    torchaudio.save('test.wav', mix, sample_rate=22050)
+    dataset = GT('spectrum', download=True, subset='training')
+    mix, genre = dataset.__getitem__(10)
+    for i in range(4):
+        save_image(mix[i], 'test{}.png'.format(i))
     print(mix, genre)

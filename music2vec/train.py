@@ -1,12 +1,18 @@
 import torch as th
 import pytorch_lightning as pl
+from torch.optim.adam import Adam
+from torchvision import transforms
 from .model import Music2Vec
-from .dataset import Remixer
+from .dataset import GT
 from torch.utils.data import DataLoader
+from torchvision.datasets import ImageFolder
+from torchvision.transforms import ToTensor, Compose, Grayscale
 from pytorch_lightning.callbacks import Callback
 import os
 import shutil
 import argparse
+from torch_optimizer import AdaBelief
+
 
 
 
@@ -15,8 +21,9 @@ def accuracy(y_hat, y):
     total = 0
     correct = 0
     _, predicted = th.max(y_hat, 1)
+    _, truth = th.max(y, 1)
     total += y.size(0)
-    correct += (predicted == y).sum().item()
+    correct += (predicted == truth).sum().item()
     return correct / total
 
 
@@ -38,14 +45,6 @@ class MyCallback(Callback):
 
         if (current_epoch+1) % self.num_each == 0:
 
-            # if self.epoch_saved_model_path:
-            #     os.remove(self.epoch_saved_model_path)
-
-            # self.epoch_saved_model_path = 'model-epoch_{}.pth'.format(current_epoch)
-            # th.save(
-            #     trainer.model.state_dict(), 
-            #     os.path.join(self.path, self.epoch_saved_model_path)
-            # )
             th.save(
                 trainer.model.model.state_dict(), 
                 self.path
@@ -64,35 +63,40 @@ class Trainer(pl.LightningModule):
         output_size=10, audio_channel=1,
         channel=64,
         # optimizer
-        optimizer=th.optim.Adam, lr=1e-3
+        optimizer=Adam, lr=1e-3
     ):
 
         super().__init__()
 
-        self.model = Music2Vec(
-            feature_size,
-            depth, kernel_size,
-            stride, lstm_layers,
-            output_size, audio_channel,
-            channel,
+        self.model = Music2Vec()
+
+        self.lr = lr
+
+        self.optimizer = optimizer(
+			self.model.parameters(), 
+          	self.lr#, weight_decay=1e-6
+        )
+        self.scheduler = th.optim.lr_scheduler.StepLR(
+            self.optimizer, 50, 0.5
         )
 
-        self.optimizer = optimizer(self.parameters(), lr)
 
+    def loss_func(self, y, y_true):
+        return th.nn.BCELoss()(y, y_true)
 
     def forward(self, x):
         return self.model(x)
 
 
     def configure_optimizers(self):
-        return self.optimizer
+        return [self.optimizer], [self.scheduler]
 
 
     def training_step(self, train_batch, batch_idx):
 
         x, y = train_batch
         y_hat = self(x)
-        loss = th.nn.CrossEntropyLoss()(y_hat, y)
+        loss = self.loss_func(y_hat, y)
         acc = accuracy(y_hat, y)
         self.log('train_loss', loss, prog_bar=True, on_epoch=True, on_step=False)
         self.log('train_acc', acc, prog_bar=True, on_epoch=True, on_step=False)
@@ -103,10 +107,19 @@ class Trainer(pl.LightningModule):
 
         x, y = val_batch
         y_hat = self(x)
-        loss = th.nn.CrossEntropyLoss()(y_hat, y)
+        loss = self.loss_func(y_hat, y)
         acc = accuracy(y_hat, y)
         self.log('val_loss', loss, prog_bar=True, on_epoch=True)
         self.log('val_acc', acc, prog_bar=True, on_epoch=True)
+
+    def test_step(self, test_batch, batch_idx):
+
+        x, y = test_batch
+        y_hat = self(x)
+        loss = self.loss_func(y_hat, y)
+        acc = accuracy(y_hat, y)
+        self.log('test_loss', loss, prog_bar=True, on_epoch=True)
+        self.log('test_acc', acc, prog_bar=True, on_epoch=True)
 
 
 if __name__ == '__main__':
@@ -134,7 +147,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '-b', '--batch_size', 
         type=int, help='value of batch size. default is 128.', 
-        default=128
+        default=64
     )
     parser.add_argument(
         '-e', '--num_per_epoch', 
@@ -159,25 +172,31 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
+    transforms = Compose([
+        Grayscale(),
+        ToTensor()
+    ])
+
     train_model = Trainer(
         lr=args.learning_rate,
         depth=args.depth
     )
     train_loader = DataLoader(
-        Remixer(os.path.join(args.processed_root, 'train'), sample_length=args.sample_length), 
+        GT(args.processed_root, download=True, subset='training'), 
         batch_size=args.batch_size,
-        num_workers=2
+        num_workers=4, shuffle=True
     )
     valid_loader = DataLoader(
-        Remixer(os.path.join(args.processed_root, 'valid'), sample_length=args.sample_length), 
+        GT(args.processed_root, download=True, subset='validation'), 
         batch_size=args.batch_size,
-        num_workers=2
+        num_workers=4, shuffle=False
     )
 
     trainer = pl.Trainer(
         gpus=args.num_gpus, 
         callbacks=[MyCallback(args.model_path, args.num_per_epoch)],
-        checkpoint_callback=False, logger=args.logging
+        checkpoint_callback=False, logger=args.logging,
+        auto_lr_find=False,
     )
 
     if os.path.exists(args.model_path):

@@ -10,6 +10,8 @@ progressbar2 = "*"
 pytorch-lightning = "*"
 scipy = "*"
 librosa = "*"
+torchvision = "*"
+torch-optimizer = "*"
 
 [dev-packages]
 pylint = "*"

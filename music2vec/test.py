@@ -1,58 +1,54 @@
 import glob
-from .dataset import read_wav_and_random_crop
+from .dataset import GT
 from .model import Music2Vec
-from .train import accuracy
+from .train import accuracy, Trainer
 import torch as th
 import scipy.stats as stats
+import pytorch_lightning as pl
+from torch.utils.data import DataLoader
+import argparse
 
 
-GENRES = [
-    'blues',
-    'classical',
-    'country',
-    'disco',
-    'hiphop',
-    'jazz',
-    'metal',
-    'pop',
-    'reggae',
-    'rock'
-]
 
+if __name__ == '__main__':
 
-model = Music2Vec()
-# model.load_state_dict(
-#     th.load('save/model.pth', map_location='cpu')
-# )
-model.eval()
+    parser = argparse.ArgumentParser(
+        description='music2vec.test: test music2vec model.'
+    )
+    parser.add_argument(
+        'model_path', metavar='<model_path>', 
+        help='dir for saved model.'
+    )
+    parser.add_argument(
+        'dataset_root', metavar='<dataset_root>', 
+        help='root for dataset.'
+    )
+    parser.add_argument(
+        '-g', '--num_gpus', 
+        type=int, help='number of gpu use. to test using cpu, this must be 0. default is 0.', 
+        default=0
+    )
 
+    args = parser.parse_args()
 
-for genre in GENRES:
+    model = Music2Vec()
+    model.load_state_dict(
+        th.load(
+            args.model_path,
+            map_location='cpu' if args.num_gpus == 0 else 'cuda'
+        )
+    )
+    model.eval()
 
-    filenames = glob.glob('process/test/{}/*.wav'.format(genre))
-    res = th.zeros(20, 10)
-    true = th.zeros(20, 1)
+    test_loader = DataLoader(
+        GT(args.dataset_root, download=True, subset='testing'), 
+        batch_size=8,
+        num_workers=4, shuffle=False
+    )
 
-    for n, filename in enumerate(filenames):
+    train = Trainer()
+    train.model = model
 
-        data = th.zeros(10, 1, 22050)
+    trainer = pl.Trainer()
 
-        for i in range(10):
-
-            wav = read_wav_and_random_crop(filename, 22050)
-            data[i] += (wav - wav.min()) / (wav.max() - wav.min()) * 2.0 - 1.0
-
-        data = th.rand(data.shape)
-
-        with th.no_grad():
-            y_hat = model(data)
-
-        _, predicted = th.max(y_hat, 1)
-        mode = stats.mode(predicted.detach().numpy())[0]
-        res[n] += th.eye(10)[mode][0]
-        true[n] += GENRES.index(genre)
-        print(predicted)
-
-    acc = accuracy(res, true)
-    print(acc/20)
-    print(res)
+    trainer.test(model=train, test_dataloaders=test_loader)

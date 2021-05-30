@@ -5,5 +5,8 @@ process/
 save
 *.wav
 .vscode
-*.png
 Pipfile.lock
+*.png
+spectrum/
+download/
+*.pyc
