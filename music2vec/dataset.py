@@ -10,6 +10,7 @@ from scipy.io import wavfile
 import numpy as np
 from torchvision.utils import save_image
 from torchaudio.datasets.gtzan import GTZAN, load_gtzan_item, gtzan_genres
+import torchvision
 
 
 GENRES = [
@@ -153,20 +154,16 @@ class GT(GTZAN):
 
         waveform = waveform.detach().numpy()
         waveform = waveform[0, :22050*30]
-        # waveform += np.random.rand(*waveform.shape)*np.random.rand(1)*0.1
-        # waveform = TimeStreach(0.1)(waveform)
-        # waveform = PitchShift(3)(waveform)
+        waveform = np.roll(waveform, random.randint(0, waveform.shape[0]))
         waveform = (waveform - waveform.min()) / (waveform.max() - waveform.min()) * 2.0 - 1.0
         image = ToConstantQ()(waveform)
-        onehot = th.eye(10)[gtzan_genres.index(label)]
 
-        return image, onehot
+        return image, gtzan_genres.index(label)
 
 
 
 if __name__ == '__main__':
     dataset = GT('spectrum', download=True, subset='training')
     mix, genre = dataset.__getitem__(10)
-    for i in range(4):
-        save_image(mix[i], 'test{}.png'.format(i))
     print(mix, genre)
+    save_image(mix[0], 'test.png')

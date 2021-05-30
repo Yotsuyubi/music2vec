@@ -44,7 +44,7 @@ def read_audio_and_split_by_frame(audio_path, duration=30):
 
 def to_spectrum(audio_batch, size=(128, 644)):
 
-    spectrum = th.zeros((audio_batch.shape[0], 4, *size))
+    spectrum = th.zeros((audio_batch.shape[0], 1, *size))
 
     for i, audio in enumerate(audio_batch):
 

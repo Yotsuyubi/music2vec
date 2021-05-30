@@ -13,7 +13,8 @@ class Swish(nn.Module):
 
 
     def forward(self, x):
-        return nn.ReLU()(x)
+        return x*nn.Sigmoid()(x*self.beta)
+        # return nn.ReLU()(x)
 
 
 class ConvBlock(nn.Module):
@@ -121,7 +122,7 @@ class Music2Vec(nn.Module):
         super().__init__()
 
         self.in_conv = nn.Sequential(
-            nn.Conv2d(4, filter, 3, 1),
+            nn.Conv2d(1, filter, 3, 1),
             nn.BatchNorm2d(filter),
             Swish(),
             nn.MaxPool2d((1, 4))
@@ -129,8 +130,9 @@ class Music2Vec(nn.Module):
         self.dense_block = DenseBlock(num_blocks, filter)
         self.transition = TransitionBlock(filter, features)
         self.fc = nn.Sequential(
+            # nn.Dropout(0.5),
             nn.Linear(features, output_size),
-            nn.Sigmoid()
+            nn.Softmax(dim=-1)
         )
         
 

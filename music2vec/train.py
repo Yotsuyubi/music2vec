@@ -21,9 +21,8 @@ def accuracy(y_hat, y):
     total = 0
     correct = 0
     _, predicted = th.max(y_hat, 1)
-    _, truth = th.max(y, 1)
     total += y.size(0)
-    correct += (predicted == truth).sum().item()
+    correct += (predicted == y).sum().item()
     return correct / total
 
 
@@ -73,7 +72,7 @@ class Trainer(pl.LightningModule):
         self.lr = lr
 
         self.optimizer = optimizer(
-			self.model.parameters(), 
+			  self.model.parameters(), 
           	self.lr#, weight_decay=1e-6
         )
         self.scheduler = th.optim.lr_scheduler.StepLR(
@@ -82,7 +81,7 @@ class Trainer(pl.LightningModule):
 
 
     def loss_func(self, y, y_true):
-        return th.nn.BCELoss()(y, y_true)
+        return th.nn.NLLLoss()(th.log(y), y_true)
 
     def forward(self, x):
         return self.model(x)
@@ -137,8 +136,8 @@ if __name__ == '__main__':
     )
     parser.add_argument(
         '-l', '--learning_rate', 
-        type=float, help='value of learning rate. default is 1e-3.', 
-        default=1e-3
+        type=float, help='value of learning rate. default is 1e-4.', 
+        default=1e-4
     )
     parser.add_argument(
         '-L', '--logging', 
@@ -146,8 +145,8 @@ if __name__ == '__main__':
     )
     parser.add_argument(
         '-b', '--batch_size', 
-        type=int, help='value of batch size. default is 128.', 
-        default=64
+        type=int, help='value of batch size. default is 10.', 
+        default=10
     )
     parser.add_argument(
         '-e', '--num_per_epoch', 
@@ -171,11 +170,6 @@ if __name__ == '__main__':
     )
 
     args = parser.parse_args()
-
-    transforms = Compose([
-        Grayscale(),
-        ToTensor()
-    ])
 
     train_model = Trainer(
         lr=args.learning_rate,
