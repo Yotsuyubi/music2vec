@@ -152,23 +152,21 @@ class GT(GTZAN):
         waveform, sample_rate, label = item
 
         waveform = waveform.detach().numpy()
-        offset = random.randint(0, waveform.shape[-1]-22050*6)
-        waveform = waveform[0, offset:offset+22050*6]
-        waveform += np.random.rand(*waveform.shape)*np.random.rand(1)*0.001
+        waveform = waveform[0, :22050*30]
+        # waveform += np.random.rand(*waveform.shape)*np.random.rand(1)*0.1
+        # waveform = TimeStreach(0.1)(waveform)
+        # waveform = PitchShift(3)(waveform)
         waveform = (waveform - waveform.min()) / (waveform.max() - waveform.min()) * 2.0 - 1.0
-
-        # waveform = TimeStreach()(waveform)
-        waveform = PitchShift()(waveform)
         image = ToConstantQ()(waveform)
-        # onehot = th.eye(10)[gtzan_genres.index(label)]
+        onehot = th.eye(10)[gtzan_genres.index(label)]
 
-        return image, gtzan_genres.index(label)
+        return image, onehot
 
 
 
 if __name__ == '__main__':
-    dataset = GT('download', download=True, subset='training')
+    dataset = GT('spectrum', download=True, subset='training')
     mix, genre = dataset.__getitem__(10)
     for i in range(4):
         save_image(mix[i], 'test{}.png'.format(i))
-    print(mix.shape, genre)
+    print(mix, genre)

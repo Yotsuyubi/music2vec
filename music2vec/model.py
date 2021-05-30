@@ -12,7 +12,7 @@ class Swish(nn.Module):
 
 
     def forward(self, x):
-        return x*nn.Sigmoid()(x*self.beta)
+        return nn.ReLU()(x)
 
 
 class ConvBlock(nn.Module):
@@ -56,8 +56,6 @@ class MultiScaleBlock(nn.Module):
 
     def forward(self, x):
 
-        x = self.inconv(x)
-
         conv1x1 = self.conv1x1(x)
         conv3x3 = self.conv3x3(x)
         conv5x5 = self.conv5x5(x)
@@ -75,16 +73,20 @@ class DenseBlock(nn.Module):
 
         super().__init__()
         self.dense = nn.ModuleList(
-            [ MultiScaleBlock(filter) for _ in range(num_blocks) ]
+            [ MultiScaleBlock(filter) for i in range(num_blocks) ]
         )
+        self.conv = nn.ModuleList([
+            *[ nn.Conv2d(filter*2, filter, 1) for i in range(num_blocks) ]
+        ])
 
 
     def forward(self, x):
 
         skip = x
-        for dense in self.dense:
+        for i, dense in enumerate(self.dense):
             x = dense(x)
-            x += skip
+            x = th.cat([x, skip], dim=1)
+            x = self.conv[i](x)
         
         return x
 
@@ -127,7 +129,7 @@ class Music2Vec(nn.Module):
         self.transition = TransitionBlock(filter, features)
         self.fc = nn.Sequential(
             nn.Linear(features, output_size),
-            nn.Softmax(dim=-1)
+            nn.Sigmoid()
         )
 
     

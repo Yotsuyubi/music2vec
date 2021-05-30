@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 
 model = Music2Vec()
 model.load_state_dict(
-    th.load('save/model_bbnn8.pth', map_location='cpu')
+    th.load('./model.pth')
 )
 model.eval()
 

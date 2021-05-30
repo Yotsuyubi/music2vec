@@ -1,7 +1,7 @@
 import torch as th
 import numpy as np
 import librosa
-from torchvision.transforms import ToTensor, ToPILImage, Resize, Normalize
+from torchvision.transforms import ToTensor, ToPILImage, Resize, Normalize, RandomErasing
 from scipy import interpolate
 
 
@@ -123,7 +123,7 @@ class ToConstantQ(object):
 
     def __init__(
         self,
-        size=(128, 128)
+        size=(128, 644)
     ):
 
         self.size = size
@@ -137,12 +137,11 @@ class ToConstantQ(object):
         # x = librosa.stft(audio)
         x = librosa.feature.melspectrogram(audio, n_mels=512, hop_length=1024)
         amp = np.abs(x)
-        amp = self.norm(amp)[:512, :]
+        amp = self.norm(amp)[:512, :644]
 
         for i in range(4):
             a = amp[i*128:(i+1)*128, :]
             a = ToPILImage()(a)
-            a = Resize(self.size)(a)
             a = ToTensor()(a)
             a = Normalize((0.5), (0.5))(a)
             image[i] += a[0] 

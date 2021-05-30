@@ -21,9 +21,9 @@ def accuracy(y_hat, y):
     total = 0
     correct = 0
     _, predicted = th.max(y_hat, 1)
-    # _, truth = th.max(y, 1)
+    _, truth = th.max(y, 1)
     total += y.size(0)
-    correct += (predicted == y).sum().item()
+    correct += (predicted == truth).sum().item()
     return correct / total
 
 
@@ -77,12 +77,12 @@ class Trainer(pl.LightningModule):
           	self.lr#, weight_decay=1e-6
         )
         self.scheduler = th.optim.lr_scheduler.StepLR(
-            self.optimizer, 100, 0.5
+            self.optimizer, 50, 0.5
         )
 
 
     def loss_func(self, y, y_true):
-        return th.nn.NLLLoss()(th.log(y), y_true)
+        return th.nn.BCELoss()(y, y_true)
 
     def forward(self, x):
         return self.model(x)
