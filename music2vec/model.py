@@ -1,5 +1,6 @@
 import torch as th
 import torch.nn as nn
+import os
 
 
 class Swish(nn.Module):
@@ -142,6 +143,28 @@ class Music2Vec(nn.Module):
 
     def forward(self, x):
         return self.fc( self.features(x) )
+
+
+
+def music2vec(model_path=None, gpu=False):
+
+    if model_path == None:
+        model_path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), 'pretrained/model.pth'
+        )
+
+    model = Music2Vec()
+    model.load_state_dict(
+        th.load(
+            model_path,
+            map_location='cuda' if gpu else 'cpu'
+        )
+    )
+    model.eval()
+
+    return model
+
+
 
 
 if __name__ == '__main__':
