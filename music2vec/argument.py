@@ -151,11 +151,11 @@ class ToConstantQ(object):
 
     def norm(self, x):
         x = librosa.power_to_db(x, ref=np.max)
-        current_freq = np.linspace(20, 22050//2, 512)
-        log_scale = np.logspace(1.7, 4.04, 512)
-        for i in range(130):
-            f = interpolate.interp1d(current_freq, x[:,i])
-            x[:,i] = f(log_scale)
+        # current_freq = np.linspace(20, 22050//2, 512)
+        # log_scale = np.logspace(1.7, 4.04, 512)
+        # for i in range(self.size[-1]):
+        #     f = interpolate.interp1d(current_freq, x[:,i])
+        #     x[:,i] = f(log_scale)
         x = ( x - np.min(x) ) / ( np.max(x) - np.min(x) )
         x = np.uint8(x*255)
         return x 
