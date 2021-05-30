@@ -147,6 +147,5 @@ class ToConstantQ(object):
 
     def norm(self, x):
         x = librosa.power_to_db(x, ref=np.max)
-        # x = (x - x.mean()) / (x.std())
-        # x = ( x - x.min() ) / ( x.max() - x.min() )
+        x = ( x - x.min() ) / ( x.max() - x.min() )
         return x
