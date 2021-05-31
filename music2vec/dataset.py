@@ -130,7 +130,7 @@ class Remixer(Dataset):
         # mix = PitchShift()(mix)
         constant_q = ToConstantQ()(mix)
 
-        return constant_q, th.eye(10)[GENRES.index(genre)]
+        return constant_q, GENRES.index(genre)
 
 
 class GT(GTZAN):

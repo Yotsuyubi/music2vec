@@ -75,8 +75,8 @@ class Trainer(pl.LightningModule):
 			  self.model.parameters(), 
           	self.lr#, weight_decay=1e-6
         )
-        self.scheduler = th.optim.lr_scheduler.StepLR(
-            self.optimizer, 50, 0.5
+        self.scheduler = th.optim.lr_scheduler.ReduceLROnPlateau(
+            self.optimizer, patience=3, factor=0.5
         )
 
 
@@ -88,7 +88,11 @@ class Trainer(pl.LightningModule):
 
 
     def configure_optimizers(self):
-        return [self.optimizer], [self.scheduler]
+        return {
+            "optimizer": self.optimizer, 
+            "lr_scheduler": self.scheduler, 
+            "monitor": "train_loss"
+        }
 
 
     def training_step(self, train_batch, batch_idx):
