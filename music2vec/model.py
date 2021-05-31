@@ -117,7 +117,7 @@ class TransitionBlock(nn.Module):
 class Music2Vec(nn.Module):
 
     def __init__(
-        self, output_size=10, filter=64, num_blocks=3, features=1024
+        self, output_size=10, filter=256, num_blocks=3, features=1024
     ):
         super().__init__()
 
