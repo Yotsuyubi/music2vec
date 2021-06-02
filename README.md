@@ -29,3 +29,18 @@ pop: 0.0112
 reggae: 0.0859
 rock: 0.2612
 ~~~
+
+### Implementation
+
+~~~python
+
+from music2vec.extraction import Extractor
+
+extractor = Extractor()
+
+genres, features = extractor('path_to_wav.wav')
+
+print(genres.shape, features.shape)
+
+~~~
+
