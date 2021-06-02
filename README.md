@@ -40,7 +40,5 @@ extractor = Extractor()
 
 genres, features = extractor('path_to_wav.wav')
 
-print(genres.shape, features.shape)
-
 ~~~
 
