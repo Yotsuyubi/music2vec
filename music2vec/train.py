@@ -3,11 +3,11 @@ import pytorch_lightning as pl
 from torch.optim.adam import Adam
 from torchvision import transforms
 from .model import Music2Vec
-from .dataset import GT
+from .dataset import Remixer
 from torch.utils.data import DataLoader
 from torchvision.datasets import ImageFolder
 from torchvision.transforms import ToTensor, Compose, Grayscale
-from pytorch_lightning.callbacks import Callback
+from pytorch_lightning.callbacks import Callback, ModelCheckpoint
 import os
 import shutil
 import argparse
@@ -73,11 +73,13 @@ class Trainer(pl.LightningModule):
 
         self.optimizer = optimizer(
 			  self.model.parameters(), 
-          	self.lr#, weight_decay=1e-6
+          	self.lr, weight_decay=1e-6
         )
         self.scheduler = th.optim.lr_scheduler.ReduceLROnPlateau(
             self.optimizer, patience=3, factor=0.5
         )
+
+        self.save_hyperparameters()
 
 
     def loss_func(self, y, y_true):
@@ -132,7 +134,7 @@ if __name__ == '__main__':
     )
     parser.add_argument(
         'model_path', metavar='<model_path>', 
-        help='dir for load/save model.'
+        help='dir to save model.'
     )
     parser.add_argument(
         'processed_root', metavar='<processed_root>', 
@@ -180,32 +182,32 @@ if __name__ == '__main__':
         depth=args.depth
     )
     train_loader = DataLoader(
-        GT(args.processed_root, download=True, subset='training'), 
+        Remixer(os.path.join(args.processed_root, 'train')), 
         batch_size=args.batch_size,
         num_workers=4, shuffle=True
     )
     valid_loader = DataLoader(
-        GT(args.processed_root, download=True, subset='validation'), 
+        Remixer(os.path.join(args.processed_root, 'valid')), 
         batch_size=args.batch_size,
         num_workers=4, shuffle=False
     )
 
-    trainer = pl.Trainer(
-        gpus=args.num_gpus, 
-        callbacks=[MyCallback(args.model_path, args.num_per_epoch)],
-        checkpoint_callback=False, logger=args.logging,
-        auto_lr_find=False,
+    checkpoint_callback = ModelCheckpoint(
+        monitor='val_loss',
+        dirpath='ckeckpoints',
+        filename='{epoch:02d}-{val_loss:.2f}',
+        save_top_k=3,
+        mode='min',
     )
 
-    if os.path.exists(args.model_path):
-        print('Load model from {}.'.format(args.model_path))
-        train_model.model.load_state_dict(
-            th.load(
-                args.model_path, 
-                map_location='cpu' if args.num_gpus == 0 else 'cuda'
-            )
-        )
-    else:
-        print('train new model.')
+    trainer = pl.Trainer(
+        gpus=args.num_gpus, 
+        callbacks=[
+            MyCallback(args.model_path, args.num_per_epoch), 
+            checkpoint_callback
+        ],
+        logger=args.logging,
+        auto_lr_find=False,
+    )
 
     trainer.fit(train_model, train_loader, valid_loader)
